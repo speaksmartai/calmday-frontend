@@ -45,68 +45,66 @@
     </div>
   </div>
 
-  <script>
-    let mediaRecorder;
-    let audioChunks = [];
+ <script>
+  let mediaRecorder;
+  let audioChunks = [];
 
-    const recordBtn = document.getElementById('recordBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const stopContainer = document.getElementById('stopContainer');
-    const status = document.getElementById('status');
-    const resultDiv = document.getElementById('result');
-    const transcriptionP = document.getElementById('transcription');
+  const recordBtn = document.getElementById('recordBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const stopContainer = document.getElementById('stopContainer');
+  const status = document.getElementById('status');
+  const resultDiv = document.getElementById('result');
+  const transcriptionP = document.getElementById('transcription');
 
-    recordBtn.addEventListener('click', async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
+  recordBtn.addEventListener('click', async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
 
-        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-        mediaRecorder.onstop = sendToBackend;
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = uploadAudio;  // ← renamed to uploadAudio for clarity
 
-        mediaRecorder.start();
-        recordBtn.classList.add('hidden');
-        stopContainer.classList.remove('hidden');
-        status.textContent = 'Recording... speak now';
-      } catch (err) {
-        status.textContent = 'Microphone access denied or not available';
-        console.error(err);
-      }
-    });
-
-    stopBtn.addEventListener('click', () => {
-      mediaRecorder.stop();
-      mediaRecorder.stream.getTracks().forEach(track => track.stop());
-      recordBtn.classList.remove('hidden');
-      stopContainer.classList.add('hidden');
-      status.textContent = 'Processing...';
-    });
-
-    async function uploadAudio() {
-  const blob = new Blob(audioChunks, { type: 'audio/wav' });
-  try {
-    const res = await fetch('https://calmday-app.stephanwesseling.workers.dev', {
-      method: 'POST',
-      body: blob,
-      headers: {
-        'Content-Type': 'audio/wav'  // or 'application/octet-stream'
-      }
-    });
-
-    if (!res.ok) {
-      throw new Error(`Server returned ${res.status}`);
+      mediaRecorder.start();
+      recordBtn.classList.add('hidden');
+      stopContainer.classList.remove('hidden');
+      status.textContent = 'Recording... speak now';
+    } catch (err) {
+      status.textContent = 'Microphone access denied or not available';
+      console.error('Mic error:', err);
     }
+  });
 
-    const json = await res.json();
-    transcription.textContent = json.text || 'No transcription received';
-    result.classList.remove('hidden');
-    status.textContent = 'Done!';
-  } catch (err) {
-    status.textContent = 'Error: ' + err.message;
-    console.error('Fetch error:', err);
+  stopBtn.addEventListener('click', () => {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    recordBtn.classList.remove('hidden');
+    stopContainer.classList.add('hidden');
+    status.textContent = 'Processing...';
+  });
+
+  async function uploadAudio() {
+    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+    try {
+      const res = await fetch('https://calmday-app.stephanwesseling.workers.dev', {
+        method: 'POST',
+        body: audioBlob,
+        headers: { 'Content-Type': 'audio/wav' }
+      });
+
+      if (!res.ok) {
+        throw new Error(`Server error: ${res.status}`);
+      }
+
+      const json = await res.json();
+      transcriptionP.textContent = json.text || 'No transcription';
+      resultDiv.classList.remove('hidden');
+      status.textContent = 'Done!';
+    } catch (err) {
+      status.textContent = 'Error: ' + err.message;
+      console.error('Fetch error:', err);
+    }
   }
-}
-  </script>
+</script>
 </body>
 </html>
