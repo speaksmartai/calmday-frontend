@@ -83,29 +83,30 @@
       status.textContent = 'Processing...';
     });
 
-    async function sendToBackend() {
-      const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.wav');
-
-      try {
-        const res = await fetch('https://calmday-app.stephanwesseling.workers.dev', {
-          method: 'POST',
-          body: audioBlob,                    // raw blob, no FormData needed
-          headers: { 'Content-Type': 'audio/wav' }
-        });
-
-        if (!res.ok) throw new Error(`Server error ${res.status}`);
-
-        const json = await res.json();
-        transcriptionP.textContent = json.text || 'No transcription';
-        resultDiv.classList.remove('hidden');
-        status.textContent = 'Done!';
-      } catch (err) {
-        status.textContent = 'Error: ' + err.message;
-        console.error(err);
+    async function uploadAudio() {
+  const blob = new Blob(audioChunks, { type: 'audio/wav' });
+  try {
+    const res = await fetch('https://calmday-app.stephanwesseling.workers.dev', {
+      method: 'POST',
+      body: blob,
+      headers: {
+        'Content-Type': 'audio/wav'  // or 'application/octet-stream'
       }
+    });
+
+    if (!res.ok) {
+      throw new Error(`Server returned ${res.status}`);
     }
+
+    const json = await res.json();
+    transcription.textContent = json.text || 'No transcription received';
+    result.classList.remove('hidden');
+    status.textContent = 'Done!';
+  } catch (err) {
+    status.textContent = 'Error: ' + err.message;
+    console.error('Fetch error:', err);
+  }
+}
   </script>
 </body>
 </html>
